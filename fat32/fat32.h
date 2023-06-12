@@ -71,7 +71,7 @@ void read_dir(directory_t* dir_handle, ldir_entry_t* ldir_handle, sdir_entry_t* 
 void read_file(file_t* file_handle, ldir_entry_t* ldir_handle, sdir_entry_t* sdir_handle, uint8_t* buff, uint32_t idx);
 
 // FAT functions and variables
-uint32_t calc_first_sector(uint32_t sec_per_cluster, uint32_t first_data_sec, uint32_t cluster);
+uint32_t calc_first_sector(uint32_t cluster);
 uint8_t calc_checksum(uint8_t name[]);
 uint8_t calc_longname(void);
 uint8_t calc_shortname(void);
@@ -82,7 +82,7 @@ void fat_get_clus_info(uint8_t* buff);
 void fat_set_dir_root(directory_t* directory);
 void fat_open_dir(directory_t* directory);
 void fat_cache_fat(uint8_t* buff);
-void fat_create_file(uint8_t* filename, uint32_t size, uint8_t type, uint32_t f_size, uint8_t* buff);
+void fat_create_file(uint8_t* filename, uint32_t size, uint8_t type, uint32_t cluster, uint32_t f_size, uint8_t* buff);
 void fat_write_file(uint8_t* buff, uint32_t f_size);
 
 void list_dir(uint8_t* buff);
@@ -92,6 +92,8 @@ void print_current_dir(void);
 void make_dir(void);
 void edit_file(uint8_t* tx_buff, uint8_t* rx_buff);
 void create_file(char* filename, uint8_t* buff);
+void delete_file(char* filename, uint8_t* buff);
+void delete_dir(char* dirname, uint8_t* buff);
 
 // MiniEditor functions and buffer
 void minied_main(uint8_t* tx_buff, uint8_t* rx_buff);

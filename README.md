@@ -7,10 +7,11 @@
 	- `cat` : print out the contents of the specified file
 	- `pwd` : print the current folder name
 	- `ed` : a basic text editor
+	- 'rm' : remove a file
+	- 'rmdir' : recursively delete all files in a directory and the directory itself
 
 ## TODO
-* write still hardcoded, need to find next free space, and write to it
 * implement mkdir function
-* editor should be able to open a file, not just create new ones
+* editor should be able to open and read file, not just create new ones
 * few fat32 functions need to be broken into multiple
 * experiment with methods to keep track of whole path

@@ -94,10 +94,29 @@ int main() {
 				for(uint32_t i = cmd_size+1; i < 512 && rx_buff[i] != '\n'; ++i, ++arg_size);
 				rx_buff[cmd_size+1+arg_size] = 0;
 				create_file((char*)(rx_buff+cmd_size+1), rx_buff);
+			} else if (str_eq((uint8_t*)"rm", 2, rx_buff, cmd_size)) {
+				if (rx_buff[cmd_size] == '\n') {
+					printf("invalid argument\n");
+					continue;
+				}
+				for(uint32_t i = cmd_size+1; i < 512 && rx_buff[i] != '\n'; ++i, ++arg_size);
+				rx_buff[cmd_size+1+arg_size] = 0;
+				delete_file((char*)(rx_buff+cmd_size+1), rx_buff);
+			} else if (str_eq((uint8_t*)"rmdir", 5, rx_buff, cmd_size)) {
+				if (rx_buff[cmd_size] == '\n') {
+					printf("invalid argument\n");
+					continue;
+				}
+				for(uint32_t i = cmd_size+1; i < 512 && rx_buff[i] != '\n'; ++i, ++arg_size);
+				rx_buff[cmd_size+1+arg_size] = 0;
+				delete_dir((char*)(rx_buff+cmd_size+1), rx_buff);
 			} else {
 				printf("unknown command...\n");
 			}
 		}
+
+		printf("-----------------\n");
+		fat_cache_fat(rx_buff);
 	}
 }
 
