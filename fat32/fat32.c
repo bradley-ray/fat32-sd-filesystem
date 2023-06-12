@@ -35,8 +35,9 @@ void read_dir(directory_t* dir_handle, ldir_entry_t* ldir_handle, sdir_entry_t* 
             dir_handle->name[j] = sdir_handle->DIR_Name[j];
     }
     
-    dir_handle->cluster = ((uint32_t)sdir_handle->DIR_FstClusHI[1] << 24) + ((uint32_t)sdir_handle->DIR_FstClusHI[0] << 16) + ((uint32_t)sdir_handle->DIR_FstClusLO[1] << 8) + ((uint32_t)sdir_handle->DIR_FstClusLO[0]);
-    dir_handle->cluster = (dir_handle->cluster != 0) ? dir_handle->cluster : 2; // root cluster is cluster 2, but marked 0 in .. entries
+	dir_handle->cluster = from_little_endian_32(sdir_handle->DIR_FstClusLO[0], sdir_handle->DIR_FstClusLO[1], sdir_handle->DIR_FstClusHI[0], sdir_handle->DIR_FstClusHI[1]);
+	// root cluster is cluster 2, but marked 0 in .. entries
+    dir_handle->cluster = (dir_handle->cluster != 0) ? dir_handle->cluster : 2;
 }
 
 void read_file(file_t* file_handle, ldir_entry_t* ldir_handle, sdir_entry_t* sdir_handle, uint8_t* buff, uint32_t idx) {
@@ -59,8 +60,8 @@ void read_file(file_t* file_handle, ldir_entry_t* ldir_handle, sdir_entry_t* sdi
             file_handle->name[j] = sdir_handle->DIR_Name[j];
     }
     
-    file_handle->cluster = ((uint32_t)sdir_handle->DIR_FstClusHI[1] << 24) + ((uint32_t)sdir_handle->DIR_FstClusHI[0] << 16) + ((uint32_t)sdir_handle->DIR_FstClusLO[1] << 8) + ((uint32_t)sdir_handle->DIR_FstClusLO[0]);
-    file_handle->filesize = ((uint32_t)sdir_handle->DIR_FileSize[3] << 24) + ((uint32_t)sdir_handle->DIR_FileSize[2] << 16) + ((uint32_t)sdir_handle->DIR_FileSize[1] << 8) + ((uint32_t)sdir_handle->DIR_FileSize[0]);
+	file_handle->cluster = from_little_endian_32(sdir_handle->DIR_FstClusLO[0], sdir_handle->DIR_FstClusLO[1], sdir_handle->DIR_FstClusHI[0], sdir_handle->DIR_FstClusHI[1]);
+	file_handle->filesize = from_little_endian_32(sdir_handle->DIR_FileSize[0], sdir_handle->DIR_FileSize[1], sdir_handle->DIR_FileSize[2], sdir_handle->DIR_FileSize[3]);
 }
 
 
@@ -77,13 +78,13 @@ void fat_read_boot(uint8_t* buff) {
 }
 
 void fat_get_clus_info(uint8_t* buff) {
-	uint32_t bpb_RootEntCnt = ((uint32_t)buff[18] << 8) + (uint32_t)buff[17];
-	uint32_t bpb_BytsPerSec = ((uint32_t)buff[12] << 8) + (uint32_t)buff[11];
+	uint32_t bpb_RootEntCnt = from_little_endian_16(buff[17], buff[18]);
+	uint32_t bpb_BytsPerSec = from_little_endian_16(buff[11], buff[12]);
 	uint32_t RootDirSectors = ((bpb_RootEntCnt * 32) + (bpb_BytsPerSec - 1)) / bpb_BytsPerSec;
-	uint32_t bpb_FatSz16 = ((uint32_t)buff[23] << 8) + (uint32_t)buff[22];
-	uint32_t bpb_FatSz32 = ((uint32_t)buff[39] << 24) + ((uint32_t)buff[38] << 16) + ((uint32_t)buff[37] << 8) + (uint32_t)buff[36];
+	uint32_t bpb_FatSz16 = from_little_endian_16(buff[22], buff[23]);
+	uint32_t bpb_FatSz32 = from_little_endian_32(buff[36], buff[37], buff[38], buff[39]);
 	uint32_t FatSz = bpb_FatSz16 ?  bpb_FatSz16 : bpb_FatSz32;
-	uint32_t bpb_RsvdSecCnt = ((uint32_t)buff[15] << 8) + (uint32_t)buff[14];
+	uint32_t bpb_RsvdSecCnt = from_little_endian_16(buff[14], buff[15]);
 	uint32_t bpb_NumFats = buff[16];
 	bpb_SecPerClus = buff[13];
 	FirstDataSector = bpb_RsvdSecCnt + (bpb_NumFats * FatSz) + RootDirSectors;
@@ -184,7 +185,6 @@ void fat_create_file(uint8_t* filename, uint32_t size, uint8_t type, uint32_t f_
 	sd_read_block(sector, buff);
 	uint32_t idx;
 	for(idx = 0; idx < 512 && buff[idx] != 0 && buff[idx] != 0xe5; idx+= 32);
-	printf("IDX: %lu\n", idx);
 	for(uint32_t i = 0; i < 32; ++i)
 		buff[idx+i] = ((uint8_t*)&long_dir)[i];
 	for(uint32_t i = 0; i < 32; ++i) {
@@ -411,16 +411,16 @@ void minied_main(uint8_t* tx_buff, uint8_t* rx_buff) {
 
 				// TODO: stop writing null bytes
 				uint32_t f_size = 0;
-				for(uint32_t i =0; i < 128 && buff.line1[i] != '\n'; ++f_size, ++i)
+				for(uint32_t i =0; i < 128 && buff.line1[i] != '\n' && buff.line1[i] != 0; ++f_size, ++i)
 					tx_buff[f_size] = buff.line1[i];
 				tx_buff[f_size++] = '\n';
-				for(uint32_t i =0; i < 128 && buff.line2[i] != '\n'; ++f_size, ++i)
+				for(uint32_t i =0; i < 128 && buff.line2[i] != '\n' && buff.line2[i] != 0; ++f_size, ++i)
 					tx_buff[f_size] = buff.line2[i];
 				tx_buff[f_size++] = '\n';
-				for(uint32_t i =0; i < 128 && buff.line3[i] != '\n'; ++f_size, ++i)
+				for(uint32_t i =0; i < 128 && buff.line3[i] != '\n' && buff.line3[i] != 0; ++f_size, ++i)
 					tx_buff[f_size] = buff.line3[i];
 				tx_buff[f_size++] = '\n';
-				for(uint32_t i =0; i < 128 && buff.line4[i] != '\n'; ++f_size, ++i)
+				for(uint32_t i =0; i < 128 && buff.line4[i] != '\n' && buff.line4[i] != 0; ++f_size, ++i)
 					tx_buff[f_size] = buff.line4[i];
 				tx_buff[f_size++] = '\n';
 
