@@ -8,27 +8,6 @@
 #define LED_TOGGLE() gpio_toggle(GPIOA, 5)
 #define NSS 4
 
-
-// TODO: find better way to store directory/path
-// 		* what about create 4 directory_t_node, one for each level of depth. Root at level 0, then level 1, level 2 and level 3. No need for malloc
-// 		  but will need to do depth checking when traversing and creating directories
-
-// TODO: need to start cleaning up things into different files
-
-// TODO: maybe need some kind of global current_file handle similar to current_dir
-
-// TODO: need to fix rx_buff to be more secure and to stay up to date (*in progress*) (causing issues with correct reads/writes)
-
-// TODO: implement write functionality to file system (*in progress*) (clean up and write to FAT)
-
-// TODO: need to clean up fat read/write to be more robost and open files spanning multiple clusters (>32KB)
-
-// TODO: add read/write abilities to mini file editor (so far has some basic write, but no read)
-
-// TODO: need to start adding error handling
-
-// TODO: use interrupts or DMA instead of polling
-
 void gpio_led_init(void);
 void uart2_init(uint32_t baud);
 void spi_init(void);
@@ -73,7 +52,7 @@ int main() {
 				}
 				for(uint32_t i = cmd_size+1; i < 512 && rx_buff[i] != '\n'; ++i, ++arg_size);
 				rx_buff[cmd_size+1+arg_size] = 0;
-				make_dir();
+				make_dir((char*)(rx_buff+cmd_size+1), rx_buff);
 			} else if (str_eq((uint8_t*)"cat", 3, rx_buff, cmd_size)) {
 				if (rx_buff[cmd_size] == '\n') {
 					printf("invalid argument\n");
@@ -151,6 +130,7 @@ void uart2_init(uint32_t baud) {
 	GPIOA->AFRL |= (uint32_t)1 << 12;
 }
 
+// TODO: at some point switch to dma or interrupt instead of polling
 void spi_init(void) {
 	RCC_ENABLE_CLK_SPI1();
 

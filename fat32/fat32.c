@@ -142,9 +142,9 @@ void fat_create_file(uint8_t* filename, uint32_t size, uint8_t type, uint32_t cl
 		primary[6] = '~';
 		primary[7] = '1'; // TODO: need to update this based on other files with simlar shortnames
 	}
-	ext[0] = filename[size-3];
-	ext[1] = filename[size-2];
-	ext[2] = filename[size-1];
+	ext[0] = (type == ATTR_ARCHIVE) ? filename[size-3] : 0;
+	ext[1] = (type == ATTR_ARCHIVE) ? filename[size-2] : 0;
+	ext[2] = (type == ATTR_ARCHIVE) ? filename[size-1] : 0;
 	for(uint32_t i = 0; i < 8; ++i)
 		short_dir.DIR_Name[i] = primary[i];
 	for(uint32_t i = 8; i < 11; ++i)
@@ -191,6 +191,10 @@ void fat_create_file(uint8_t* filename, uint32_t size, uint8_t type, uint32_t cl
 		long_dir.LDIR_Name3[i+1] = 0;
 	}
 
+	fat_cache[cluster] = FAT_EOC;
+	sd_write_block(64, (uint8_t*)fat_cache);
+	fat_cache_fat(buff);
+
 	uint32_t sector = calc_first_sector(current_dir.cluster);
 	sd_read_block(sector, buff);
 	uint32_t idx;
@@ -207,6 +211,8 @@ void fat_write_file(uint8_t* buff, uint32_t cluster) {
 	uint32_t sector = calc_first_sector(cluster);
 	sd_write_block(sector, buff);
 
+	// TODO: right now this is uncessary, but will be necessary one files > 1 cluster
+	//       are made to work
 	fat_cache[cluster] = FAT_EOC;
 	sd_write_block(64, (uint8_t*)fat_cache);
 	fat_cache_fat(buff);
@@ -479,8 +485,85 @@ void edit_file(uint8_t* tx_buff, uint8_t* rx_buff) {
 }
 
 
-void make_dir(void) {
-	printf("making dir...\n");
+void make_dir(char* dirname, uint8_t* buff) {
+	uint32_t size = 0;
+	for(uint32_t j = 0; j < 16 && dirname[j] != 0; j++, size++);
+
+	// find free cluster
+	uint32_t cluster = 2;
+	for(; cluster < FAT_CACHE_CAPACITY && fat_cache[cluster]; ++cluster);
+
+	fat_create_file((uint8_t*)dirname, size, ATTR_DIRECTORY, cluster, 0, buff);
+
+	// create the '.' and '..' directories
+	fat_create_curr_dir(cluster, buff);
+	fat_create_prev_dir(cluster, buff);
+	
+}
+
+void fat_create_curr_dir(uint32_t cluster, uint8_t* buff) {
+	short_dir.DIR_Name[0] = '.';
+	for(uint32_t i = 1; i < 11; ++i)
+		short_dir.DIR_Name[i] = ' ';
+	short_dir.DIR_Attr = ATTR_DIRECTORY;
+	short_dir.DIR_NTres = 0;
+	short_dir.DIR_CrtTimeTenth = 0;
+	short_dir.DIR_CrtTime[0] = 0;
+	short_dir.DIR_CrtTime[1] = 0;
+	short_dir.DIR_CrtDate[0] = 0;
+	short_dir.DIR_CrtDate[1] = 0;
+	short_dir.DIR_LstAccDate[0] = 0;
+	short_dir.DIR_LstAccDate[1] = 0;
+	short_dir.DIR_FstClusHI[0] = (uint8_t)(cluster >> 24);
+	short_dir.DIR_FstClusHI[1] = (uint8_t)(cluster>>16);
+	short_dir.DIR_WrtTime[0] = 0;
+	short_dir.DIR_WrtTime[1] = 0;
+	short_dir.DIR_WrtDate[0] = 0;
+	short_dir.DIR_WrtDate[1] = 0;
+	short_dir.DIR_FstClusLO[0] = (uint8_t)cluster;
+	short_dir.DIR_FstClusLO[1] = (uint8_t)(cluster >> 8);
+	short_dir.DIR_FileSize[0] = 0;
+	short_dir.DIR_FileSize[1] = 0;
+	short_dir.DIR_FileSize[2] = 0;
+	short_dir.DIR_FileSize[3] = 0;
+
+	sd_read_block(calc_first_sector(cluster), buff);
+	for(uint32_t i = 0; i < 32; ++i)
+		buff[i] = ((uint8_t*)&short_dir)[i];
+	sd_write_block(calc_first_sector(cluster), buff);
+}
+
+void fat_create_prev_dir(uint32_t cluster, uint8_t* buff) {
+	short_dir.DIR_Name[0] = '.';
+	short_dir.DIR_Name[1] = '.';
+	for(uint32_t i = 2; i < 11; ++i)
+		short_dir.DIR_Name[i] = ' ';
+	short_dir.DIR_Attr = ATTR_DIRECTORY;
+	short_dir.DIR_NTres = 0;
+	short_dir.DIR_CrtTimeTenth = 0;
+	short_dir.DIR_CrtTime[0] = 0;
+	short_dir.DIR_CrtTime[1] = 0;
+	short_dir.DIR_CrtDate[0] = 0;
+	short_dir.DIR_CrtDate[1] = 0;
+	short_dir.DIR_LstAccDate[0] = 0;
+	short_dir.DIR_LstAccDate[1] = 0;
+	short_dir.DIR_FstClusHI[0] = (uint8_t)(current_dir.cluster >> 24);
+	short_dir.DIR_FstClusHI[1] = (uint8_t)(current_dir.cluster >> 16);
+	short_dir.DIR_WrtTime[0] = 0;
+	short_dir.DIR_WrtTime[1] = 0;
+	short_dir.DIR_WrtDate[0] = 0;
+	short_dir.DIR_WrtDate[1] = 0;
+	short_dir.DIR_FstClusLO[0] = (uint8_t)current_dir.cluster;
+	short_dir.DIR_FstClusLO[1] = (uint8_t)(current_dir.cluster >> 8);
+	short_dir.DIR_FileSize[0] = 0;
+	short_dir.DIR_FileSize[1] = 0;
+	short_dir.DIR_FileSize[2] = 0;
+	short_dir.DIR_FileSize[3] = 0;
+
+	sd_read_block(calc_first_sector(cluster), buff);
+	for(uint32_t i = 32; i < 64; ++i)
+		buff[i] = ((uint8_t*)&short_dir)[i-32];
+	sd_write_block(calc_first_sector(cluster), buff);
 }
 
 uint32_t calc_first_sector(uint32_t cluster) {
