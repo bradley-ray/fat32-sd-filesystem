@@ -3,7 +3,7 @@ CFLAGS ?= -W -Wall -Wextra -Werror -Wundef -Wshadow -Wdouble-promotion \
 					-g3 -Os -ffunction-sections -fdata-sections \
 					-mcpu=cortex-m0plus -mthumb $(EXTRA_CFLAGS)
 LDFLAGS ?= -Tlink.ld -nostartfiles -nostdlib --specs nano.specs -lc -lgcc -Wl,--gc-sections -Wl,-Map=build/$@.map
-SOURCES ?= startup.s src/*.c lib/*/*.c helpers/*.c
+SOURCES ?= startup.s src/*.c lib/*/*.c
 INCLUDE ?= -Ihelpers -Ilib/hal -Ilib/fat32 -Ilib/sd -Iinc
 
 firmware.elf: $(SOURCES)

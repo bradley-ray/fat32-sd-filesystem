@@ -2,6 +2,7 @@
 #include "sd.h"
 #include "hal.h"
 #include "helpers.h"
+#include <stdio.h>
 
 static uint32_t bpb_SecPerClus;
 static uint32_t FirstDataSector;
