@@ -1,10 +1,12 @@
 #include "fat32.h"
-#include "sd/sd.h"
-#include "hal/hal.h"
-#include "helpers/helpers.h"
+#include "sd.h"
+#include "hal.h"
+#include "helpers.h"
 
 static uint32_t bpb_SecPerClus;
 static uint32_t FirstDataSector;
+
+
 
 static ldir_entry_t long_dir;
 static sdir_entry_t short_dir;

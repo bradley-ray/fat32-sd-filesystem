@@ -1,15 +1,13 @@
 CFLAGS ?= -W -Wall -Wextra -Werror -Wundef -Wshadow -Wdouble-promotion \
 					-Wformat-truncation -fno-common -Wconversion \
 					-g3 -Os -ffunction-sections -fdata-sections \
-					-mcpu=cortex-m0plus -mthumb -I. $(EXTRA_CFLAGS)
-# LDFLAGS ?= -Tlink.ld -nostartfiles -nostdlib --specs nano.specs -u_printf_float -lc -lgcc -Wl,--gc-sections -Wl,-Map=$@.map
+					-mcpu=cortex-m0plus -mthumb $(EXTRA_CFLAGS)
 LDFLAGS ?= -Tlink.ld -nostartfiles -nostdlib --specs nano.specs -lc -lgcc -Wl,--gc-sections -Wl,-Map=build/$@.map
-SOURCES ?= main.c hal/hal.c fat32/fat32.c sd/sd.c helpers/helpers.c stm32c0_irq.c startup.s syscalls.c
-# SOURCES ?= main.s startup.s
-# INCLUDE ?= -I helpers/ -I fat32/ -I hal/ -I sd/
+SOURCES ?= startup.s src/*.c lib/*/*.c helpers/*.c
+INCLUDE ?= -Ihelpers -Ilib/hal -Ilib/fat32 -Ilib/sd -Iinc
 
 firmware.elf: $(SOURCES)
-	arm-none-eabi-gcc $(SOURCES) $(CFLAGS) $(LDFLAGS) -o build/$@ 
+	arm-none-eabi-gcc $(SOURCES) $(CFLAGS) $(INCLUDE) $(LDFLAGS) -o build/$@ 
 
 firmware.bin: firmware.elf
 	arm-none-eabi-objcopy -O binary $< $@

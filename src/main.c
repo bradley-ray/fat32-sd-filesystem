@@ -1,8 +1,8 @@
 #include <stdio.h>
-#include "hal/hal.h"
-#include "sd/sd.h"
-#include "fat32/fat32.h"
-#include "helpers/helpers.h"
+#include "hal.h"
+#include "sd.h"
+#include "fat32.h"
+#include "helpers.h"
 
 #define FREQ 12000000
 #define LED_TOGGLE() gpio_toggle(GPIOA, 5)

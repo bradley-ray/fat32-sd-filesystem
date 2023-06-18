@@ -1,4 +1,4 @@
-#include "hal/hal.h"
+#include "hal.h"
 
 int _write(int file, char* ptr, int len) {
     if (file == 1)
