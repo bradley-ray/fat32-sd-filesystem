@@ -74,6 +74,7 @@ uint8_t calc_checksum(uint8_t name[]);
 uint8_t calc_longname(void);
 uint8_t calc_shortname(void);
 
+uint32_t fat_find_entry_idx(uint8_t* entry_name, uint32_t size, uint32_t cluster, uint8_t* buff);
 void fat_init(uint8_t* buff);
 void fat_read_boot(uint8_t* buff);
 void fat_get_clus_info(uint8_t* buff);
