@@ -65,8 +65,8 @@ typedef struct {
     uint8_t name[16];
 } file_t;
 
-void read_dir(directory_t* dir_handle, ldir_entry_t* ldir_handle, sdir_entry_t* sdir_handle, uint8_t* buff, uint32_t idx);
-void read_file(file_t* file_handle, ldir_entry_t* ldir_handle, sdir_entry_t* sdir_handle, uint8_t* buff, uint32_t idx);
+void read_dir(directory_t* dir_handle, uint8_t* buff, uint32_t idx);
+void read_file(file_t* file_handle, uint8_t* buff, uint32_t idx);
 
 // FAT functions and variables
 uint32_t calc_first_sector(uint32_t cluster);
@@ -78,31 +78,20 @@ uint32_t fat_find_entry_idx(uint8_t* entry_name, uint32_t size, uint32_t cluster
 void fat_init(uint8_t* buff);
 void fat_read_boot(uint8_t* buff);
 void fat_get_clus_info(uint8_t* buff);
-void fat_set_dir_root(directory_t* directory);
+void fat_set_dir_root(void);
 void fat_open_dir(directory_t* directory);
 void fat_cache_fat(uint8_t* buff);
 void fat_create_file(uint8_t* filename, uint32_t size, uint8_t type, uint32_t cluster, uint32_t f_size, uint8_t* buff);
 void fat_write_file(uint8_t* buff, uint32_t f_size);
 void fat_create_curr_dir(uint32_t cluster, uint8_t* buff);
 void fat_create_prev_dir(uint32_t cluster, uint8_t* buff);
-
-void list_dir(uint8_t* buff);
-void change_dir(char* dirname, uint8_t* buff);
-void cat_file(char* filename, uint8_t* buff);
-void print_current_dir(void);
-void edit_file(uint8_t* tx_buff, uint8_t* rx_buff);
-void create_file(char* filename, uint8_t* buff);
-void delete_file(char* filename, uint8_t* buff);
-void make_dir(char* dirname, uint8_t* buff);
-void delete_dir(char* dirname, uint8_t* buff);
-
-// MiniEditor functions and buffer
-void minied_main(uint8_t* tx_buff, uint8_t* rx_buff);
-typedef struct {
-	uint8_t line1[128];
-	uint8_t line2[128];
-	uint8_t line3[128];
-	uint8_t line4[128];
-} minied_buff_t;
+uint32_t fat_find_free_cluster(void);
+uint32_t fat_get_current_dir_cluster(void);
+uint8_t* fat_get_current_dir_name(void);
+void fat_update_current_dir(directory_t* dir);
+void fat_delete_dir(uint8_t* dirname, uint32_t name1_size, uint8_t* buff);
+void fat_delete_file(uint8_t* filename, uint32_t name1_size, uint8_t* buff);
+uint32_t fat_find_next_dir_entry(directory_t* dir, uint32_t cluster, uint32_t start, uint8_t* buff);
+uint32_t fat_find_next_file_entry(file_t* file, uint32_t cluster, uint32_t start, uint8_t* buff);
 
 #endif

@@ -29,63 +29,63 @@ static uint8_t is_file(uint8_t attr1, uint8_t attr2) {
 }
 
 
-void read_dir(directory_t* dir_handle, ldir_entry_t* ldir_handle, sdir_entry_t* sdir_handle, uint8_t* buff, uint32_t idx) {
+void read_dir(directory_t* dir_handle, uint8_t* buff, uint32_t idx) {
     for(uint32_t j = 0; j < 32; ++j) {
-        ((uint8_t*)ldir_handle)[j] = buff[j+idx];
+        ((uint8_t*)&long_dir)[j] = buff[j+idx];
 	}
 
 	for(uint32_t i = 0; i < 16; ++i) {
 		dir_handle->name[i] = 0;
 	}
 
-    if (is_long_name(ldir_handle->LDIR_Attr)) {
+    if (is_long_name(long_dir.LDIR_Attr)) {
         for(uint32_t j = 0; j < 32; ++j)
-            ((uint8_t*)sdir_handle)[j] = buff[j+idx+32];
+            ((uint8_t*)&short_dir)[j] = buff[j+idx+32];
         for(uint32_t j = 0, k = 0; j < 10; j+=2, k++)
-            dir_handle->name[k] = ldir_handle->LDIR_Name1[j];
+            dir_handle->name[k] = long_dir.LDIR_Name1[j];
         for(uint32_t j = 0, k = 5; j < 12; j+=2, k++)
-            dir_handle->name[k] = ldir_handle->LDIR_Name2[j];
+            dir_handle->name[k] = long_dir.LDIR_Name2[j];
         for(uint32_t j = 0, k = 11; j < 4; j+=2, k++)
-            dir_handle->name[k] = ldir_handle->LDIR_Name3[j];
+            dir_handle->name[k] = long_dir.LDIR_Name3[j];
     } else {
         for(uint32_t j = 0; j < 32; ++j)
-            ((uint8_t*)sdir_handle)[j] = buff[j+idx];
+            ((uint8_t*)&short_dir)[j] = buff[j+idx];
         for(uint32_t j = 0; j < 11; ++j)
-            dir_handle->name[j] = sdir_handle->DIR_Name[j];
+            dir_handle->name[j] = short_dir.DIR_Name[j];
     }
     
-	dir_handle->cluster = from_little_endian_32(sdir_handle->DIR_FstClusLO[0], sdir_handle->DIR_FstClusLO[1], sdir_handle->DIR_FstClusHI[0], sdir_handle->DIR_FstClusHI[1]);
+	dir_handle->cluster = from_little_endian_32(short_dir.DIR_FstClusLO[0], short_dir.DIR_FstClusLO[1], short_dir.DIR_FstClusHI[0], short_dir.DIR_FstClusHI[1]);
 	// root cluster is cluster 2, but marked 0 in .. entries
     dir_handle->cluster = (dir_handle->cluster != 0) ? dir_handle->cluster : 2;
 }
 
-void read_file(file_t* file_handle, ldir_entry_t* ldir_handle, sdir_entry_t* sdir_handle, uint8_t* buff, uint32_t idx) {
+void read_file(file_t* file_handle, uint8_t* buff, uint32_t idx) {
     for(uint32_t j = 0; j < 32; ++j) {
-        ((uint8_t*)ldir_handle)[j] = buff[j+idx];
+        ((uint8_t*)&long_dir)[j] = buff[j+idx];
 	}
 
 	for(uint32_t i = 0; i < 16; ++i) {
 		file_handle->name[i] = 0;
 	}
 
-    if (is_long_name(ldir_handle->LDIR_Attr)) {
+    if (is_long_name(long_dir.LDIR_Attr)) {
         for(uint32_t j = 0; j < 32; ++j)
-            ((uint8_t*)sdir_handle)[j] = buff[j+idx+32];
+            ((uint8_t*)&short_dir)[j] = buff[j+idx+32];
         for(uint32_t j = 0, k = 0; j < 10; j+=2, k++)
-            file_handle->name[k] = ldir_handle->LDIR_Name1[j];
+            file_handle->name[k] = long_dir.LDIR_Name1[j];
         for(uint32_t j = 0, k = 5; j < 12; j+=2, k++)
-            file_handle->name[k] = ldir_handle->LDIR_Name2[j];
+            file_handle->name[k] = long_dir.LDIR_Name2[j];
         for(uint32_t j = 0, k = 11; j < 4; j+=2, k++)
-            file_handle->name[k] = ldir_handle->LDIR_Name3[j];
+            file_handle->name[k] = long_dir.LDIR_Name3[j];
     } else {
         for(uint32_t j = 0; j < 32; ++j)
-            ((uint8_t*)sdir_handle)[j] = buff[j+idx];
+            ((uint8_t*)&short_dir)[j] = buff[j+idx];
         for(uint32_t j = 0; j < 11; ++j)
-            file_handle->name[j] = sdir_handle->DIR_Name[j];
+            file_handle->name[j] = short_dir.DIR_Name[j];
     }
     
-	file_handle->cluster = from_little_endian_32(sdir_handle->DIR_FstClusLO[0], sdir_handle->DIR_FstClusLO[1], sdir_handle->DIR_FstClusHI[0], sdir_handle->DIR_FstClusHI[1]);
-	file_handle->filesize = from_little_endian_32(sdir_handle->DIR_FileSize[0], sdir_handle->DIR_FileSize[1], sdir_handle->DIR_FileSize[2], sdir_handle->DIR_FileSize[3]);
+	file_handle->cluster = from_little_endian_32(short_dir.DIR_FstClusLO[0], short_dir.DIR_FstClusLO[1], short_dir.DIR_FstClusHI[0], short_dir.DIR_FstClusHI[1]);
+	file_handle->filesize = from_little_endian_32(short_dir.DIR_FileSize[0], short_dir.DIR_FileSize[1], short_dir.DIR_FileSize[2], short_dir.DIR_FileSize[3]);
 }
 
 uint32_t fat_find_entry_idx(uint8_t* entry_name, uint32_t size, uint32_t cluster, uint8_t* buff) {
@@ -98,14 +98,14 @@ uint32_t fat_find_entry_idx(uint8_t* entry_name, uint32_t size, uint32_t cluster
 
 		if (is_dir(buff[i+11], buff[i+11+32])) {
 			directory_t dir;
-			read_dir(&dir, &long_dir, &short_dir, buff, i);
+			read_dir(&dir, buff, i);
 			uint8_t name2_size = 0;
 			for(uint32_t j = 0; j < 16 && dir.name[j] != 0; j++, name2_size++);
 			if (str_eq(entry_name, size, dir.name, name2_size))
 				return i;
 		} else if (is_file(buff[i+11], buff[i+11+32])) {
 			file_t file;
-			read_file(&file, &long_dir, &short_dir, buff, i);
+			read_file(&file, buff, i);
 			uint8_t name2_size = 0;
 			for(uint32_t j = 0; j < 16 && file.name[j] != 0; j++, name2_size++);
 			if (str_eq(entry_name, size, file.name, name2_size))
@@ -117,11 +117,61 @@ uint32_t fat_find_entry_idx(uint8_t* entry_name, uint32_t size, uint32_t cluster
 	return 512;
 }
 
+uint32_t fat_find_next_dir_entry(directory_t* dir, uint32_t cluster, uint32_t start, uint8_t* buff) {
+	sd_read_block(calc_first_sector(cluster), buff);
+
+	start += !is_long_name(buff[start+11]) ? 32 : 64;
+	for (uint32_t i = start; i < 512-32; i += (!is_long_name(buff[i+11]) ? 32 : 64)) {
+		if(is_empty(buff[i])) {
+			continue;
+		}
+
+		if (is_dir(buff[i+11], buff[i+11+32])) {
+			read_dir(dir, buff, i);
+			return i;
+		}
+	}
+
+	return 512;
+}
+
+uint32_t fat_find_next_file_entry(file_t* file, uint32_t cluster, uint32_t start, uint8_t* buff) {
+	sd_read_block(calc_first_sector(cluster), buff);
+
+	start += !is_long_name(buff[start+11]) ? 32 : 64;
+	for (uint32_t i = start; i < 512-32; i += (!is_long_name(buff[i+11]) ? 32 : 64)) {
+		if(is_empty(buff[i])) {
+			continue;
+		}
+
+		if (is_file(buff[i+11], buff[i+11+32])) {
+			read_file(file, buff, i);
+			return i;
+		}
+	}
+
+	return 512;
+}
+
+uint32_t fat_get_current_dir_cluster(void) {
+	return current_dir.cluster;
+}
+
+uint8_t* fat_get_current_dir_name(void) {
+	return current_dir.name;
+}
+
+void fat_update_current_dir(directory_t* dir) {
+	current_dir.cluster = dir->cluster;
+	for(uint32_t j = 0; j < 16; j++)
+		current_dir.name[j] = dir->name[j];
+}
+
 void fat_init(uint8_t* buff) {
 	fat_read_boot(buff);
 	fat_get_clus_info(buff);
 	fat_cache_fat(buff);
-	fat_set_dir_root(&current_dir);
+	fat_set_dir_root();
 	fat_open_dir(&current_dir);
 }
 
@@ -142,15 +192,15 @@ void fat_get_clus_info(uint8_t* buff) {
 	FirstDataSector = bpb_RsvdSecCnt + (bpb_NumFats * FatSz) + RootDirSectors;
 }
 
-void fat_set_dir_root(directory_t* directory) {
-	directory->name[0] = 'r';
-	directory->name[1] = 'o';
-	directory->name[2] = 'o';
-	directory->name[3] = 't';
+void fat_set_dir_root(void) {
+	current_dir.name[0] = 'r';
+	current_dir.name[1] = 'o';
+	current_dir.name[2] = 'o';
+	current_dir.name[3] = 't';
 	for(uint32_t i = 4; i < 11; i++)
-		directory->name[i] = 0;
+		current_dir.name[i] = 0;
 
-	directory->cluster = ROOT_CLUSTER;
+	current_dir.cluster = ROOT_CLUSTER;
 }
 
 void fat_open_dir(directory_t* directory) {
@@ -275,7 +325,7 @@ void fat_delete_file(uint8_t* filename, uint32_t name1_size, uint8_t* buff) {
 	}
 
 	file_t file;
-	read_file(&file, &long_dir, &short_dir, buff, i);
+	read_file(&file, buff, i);
 	buff[i] = 0xe5;
 	if (is_long_name(buff[i+11]))
 		buff[i+32] = 0xe5;
@@ -303,7 +353,7 @@ void fat_delete_dir(uint8_t* dirname, uint32_t name1_size, uint8_t* buff) {
 	}
 
 	directory_t directory;
-	read_dir(&directory, &long_dir, &short_dir, buff, i);
+	read_dir(&directory, buff, i);
 
 	// recursive delete of directory
 	sd_read_block(calc_first_sector(directory.cluster), buff);
@@ -314,7 +364,7 @@ void fat_delete_dir(uint8_t* dirname, uint32_t name1_size, uint8_t* buff) {
 
 		if (is_dir(buff[k+11], buff[k+11+32])) {
 			directory_t directory_in;
-			read_dir(&directory_in, &long_dir, &short_dir, buff, k);
+			read_dir(&directory_in, buff, k);
 			uint32_t size = 0;
 			for(uint32_t j = 0; j < 16 && directory_in.name[j] != 0; j++, size++);
 			if (str_eq(directory_in.name, size, (uint8_t*)"..         ", 11) || str_eq(directory_in.name, size, (uint8_t*)".          ", 11)) {
@@ -327,7 +377,7 @@ void fat_delete_dir(uint8_t* dirname, uint32_t name1_size, uint8_t* buff) {
 			current_dir.cluster = cluster_backup;
 		} else if (is_file(buff[k+11], buff[k+11+32])) {
 			file_t file;
-			read_file(&file, &long_dir, &short_dir, buff, k);
+			read_file(&file, buff, k);
 			sd_read_block(calc_first_sector(directory.cluster), buff);
 			buff[k] = 0xe5;
 			if (is_long_name(buff[k+11]))
@@ -351,14 +401,15 @@ void fat_delete_dir(uint8_t* dirname, uint32_t name1_size, uint8_t* buff) {
 	}
 }
 
-
-
-void find_free_sector(void) {
-
+void fat_find_free_sector(void) {
+	// TODO
 }
 
-void find_free_cluster(void) {
-
+// TOOD: currently only looking at first sector of FAT
+uint32_t fat_find_free_cluster(void) {
+	uint32_t cluster = 2;
+	for(; cluster < FAT_CACHE_CAPACITY && fat_cache[cluster]; ++cluster);
+	return cluster;
 }
 
 uint8_t calc_checksum(uint8_t name[]) {
@@ -367,137 +418,6 @@ uint8_t calc_checksum(uint8_t name[]) {
 	for (uint8_t i = 11; i > 0; --i)
 		sum = (uint8_t)(((sum & 1) ? 0x80 : 0) + (sum >> 1) + name[11-i]);
 	return sum;
-}
-
-void list_dir(uint8_t* buff) {
-	uint32_t sector = calc_first_sector(current_dir.cluster);
-	sd_read_block(sector, buff);
-
-	for (uint32_t i = 0; i < 512; i += (!is_long_name(buff[i+11]) ? 32 : 64)) {
-		if(is_empty(buff[i])) {
-			continue;
-		}
-
-		if (is_dir(buff[i+11], buff[i+11+32])) {
-			directory_t directory;
-			read_dir(&directory, &long_dir, &short_dir, buff, i);
-			printf("(dir) %s\n", directory.name);
-		} else if (is_file(buff[i+11], buff[i+11+32])) {
-			file_t file;
-			read_file(&file, &long_dir, &short_dir, buff, i);
-			printf("(file) %s -- %lu B\n", file.name, file.filesize);
-		}
-	}
-}
-
-void change_dir(char* dirname, uint8_t* buff) {
-	uint8_t name1_size = 0;
-	uint8_t new_dir[16] = {0};
-	for(uint32_t i = 0; i < 16 && dirname[i] != 0; i++, name1_size++)
-		new_dir[i] = dirname[i];
-
-	if (str_eq((uint8_t*)dirname, name1_size, (uint8_t*)".", 1)) {
-		return;
-	}
-
-	if(str_eq((uint8_t*)dirname, name1_size, (uint8_t*)"root", 4)) {
-		fat_set_dir_root(&current_dir);	
-		return;
-	}
-
-	if (str_eq((uint8_t*)new_dir, name1_size, (uint8_t*)"..", 2)) {
-		name1_size = 11;
-		for(uint32_t i = 2; i < 11; ++i)
-			new_dir[i] = ' ';
-	}
-
-	uint32_t i = fat_find_entry_idx(new_dir, name1_size, current_dir.cluster, buff);
-	directory_t directory;
-	read_dir(&directory, &long_dir, &short_dir, buff, i);
-	current_dir.cluster = directory.cluster;
-	for(uint32_t j = 0; j < 16; j++)
-		current_dir.name[j] = directory.name[j];
-
-	printf("directory '%s' not found\n", new_dir);
-}
-
-void cat_file(char* filename, uint8_t* buff) {
-	uint8_t name1_size = 0;
-	uint8_t file_name[16] = {0};
-	for(uint32_t j = 0; j < 16 && filename[j] != 0; j++, name1_size++)
-		file_name[j] = filename[j];
-
-	uint32_t i = fat_find_entry_idx(file_name, name1_size, current_dir.cluster, buff);
-	if (is_dir(short_dir.DIR_Attr, 0)) {
-		printf("'%s' is a directory\n", file_name);
-		return;
-	}
-	if (i == 512) {
-		printf("file '%s' not found\n", file_name);
-		return;
-	}
-
-	file_t file;
-	read_file(&file, &long_dir, &short_dir, buff, i);
-	uint32_t sector = calc_first_sector(file.cluster);
-	for (uint32_t j = 0, bytes_rem = file.filesize; j < 64 && bytes_rem > 0; ++j) {
-		sd_read_block(sector+j, buff);
-		for(uint32_t k = 0; k < 512 && bytes_rem > 0; ++k, bytes_rem--)
-			printf("%c", buff[k]);
-
-		if (bytes_rem == 0) break;
-	}
-	printf("\n");
-}
-
-void create_file(char* filename, uint8_t* buff) {
-	uint32_t size = 0;
-	for(uint32_t j = 0; j < 16 && filename[j] != 0; j++, size++);
-
-	// find free cluster
-	uint32_t cluster = 2;
-	for(; cluster < FAT_CACHE_CAPACITY && fat_cache[cluster]; ++cluster);
-
-	fat_create_file((uint8_t*)filename, size, ATTR_ARCHIVE, cluster, 0, buff);
-}
-
-void delete_file(char* filename, uint8_t* buff) {
-	uint32_t size = 0;
-	for(uint32_t j = 0; j < 16 && filename[j] != 0; j++, size++);
-
-	fat_delete_file((uint8_t*)filename, size, buff);
-}
-
-void delete_dir(char* dirname, uint8_t* buff) {
-	uint32_t size = 0;
-	for(uint32_t j = 0; j < 16 && dirname[j] != 0; j++, size++);
-
-	fat_delete_dir((uint8_t*)dirname, size, buff);
-}
-
-void print_current_dir(void) {
-	printf("Dir: %s\n", current_dir.name);
-}
-
-void edit_file(uint8_t* tx_buff, uint8_t* rx_buff) {
-	minied_main(tx_buff, rx_buff);
-}
-
-
-void make_dir(char* dirname, uint8_t* buff) {
-	uint32_t size = 0;
-	for(uint32_t j = 0; j < 16 && dirname[j] != 0; j++, size++);
-
-	// find free cluster
-	uint32_t cluster = 2;
-	for(; cluster < FAT_CACHE_CAPACITY && fat_cache[cluster]; ++cluster);
-
-	fat_create_file((uint8_t*)dirname, size, ATTR_DIRECTORY, cluster, 0, buff);
-
-	// create the '.' and '..' directories
-	fat_create_curr_dir(cluster, buff);
-	fat_create_prev_dir(cluster, buff);
-	
 }
 
 void fat_create_curr_dir(uint32_t cluster, uint8_t* buff) {
@@ -572,107 +492,4 @@ uint32_t calc_first_sector(uint32_t cluster) {
 		return 64;
 
 	return (cluster-2)*bpb_SecPerClus + FirstDataSector;
-}
-
-
-// TODO: probably should flush buffer before writing
-void minied_main(uint8_t* tx_buff, uint8_t* rx_buff) {
-	printf("Welcome to mini editor tool!\n");
-	uint8_t filename[16] = {0};
-	uint8_t inp = 0;
-	minied_buff_t buff;
-	for(uint32_t i = 0; i < 512; ++i)
-		((uint8_t*)&buff)[i] = 0;
-	buff.line1[0] = '\n';
-	buff.line2[0] = '\n';
-	buff.line3[0] = '\n';
-	buff.line4[0] = '\n';
-	uint8_t* line = buff.line1;
-	while(inp != 'q') {
-		inp = uart2_read_byte();
-		(void)uart2_read_byte();
-		// TODO: all of these commands should be broken up and handled in seperate functions
-		switch(inp) {
-			case '1':
-				printf("1\n");
-				line = buff.line1;
-				break;
-			case '2':
-				printf("2\n");
-				line = buff.line2;
-				break;
-			case '3':
-				printf("3\n");
-				line = buff.line3;
-				break;
-			case '4':
-				printf("4\n");
-				line = buff.line4;
-				break;
-			case '.':
-				printf(".\n");
-				uart2_read_buff_until('\n', rx_buff, 512);
-				for(uint32_t i = 0; i < 127 && rx_buff[i] != '\n'; ++i) // only get 127 characters, 128 will be forced to \n
-					line[i] = rx_buff[i];
-				line[127] = '\n';
-				break;
-			case 'n':
-				printf("next buff, not implemented yet :(\n");
-				break;
-			case 'p':
-				printf("prev buff, not implemented yet :(\n");
-				break;
-			case 'w':
-				uart2_read_buff_until('\n', rx_buff, 512);
-				uint32_t fn_size = 0; 
-				for(; fn_size < 16 && rx_buff[fn_size] != '\n'; ++fn_size)
-					filename[fn_size] = rx_buff[fn_size];
-
-				for(uint32_t i = 0; i < 512; ++i)
-					tx_buff[i] = 0;
-
-				// TODO: stop writing null bytes
-				uint32_t f_size = 0;
-				for(uint32_t i =0; i < 128 && buff.line1[i] != '\n' && buff.line1[i] != 0; ++f_size, ++i)
-					tx_buff[f_size] = buff.line1[i];
-				tx_buff[f_size++] = '\n';
-				for(uint32_t i =0; i < 128 && buff.line2[i] != '\n' && buff.line2[i] != 0; ++f_size, ++i)
-					tx_buff[f_size] = buff.line2[i];
-				tx_buff[f_size++] = '\n';
-				for(uint32_t i =0; i < 128 && buff.line3[i] != '\n' && buff.line3[i] != 0; ++f_size, ++i)
-					tx_buff[f_size] = buff.line3[i];
-				tx_buff[f_size++] = '\n';
-				for(uint32_t i =0; i < 128 && buff.line4[i] != '\n' && buff.line4[i] != 0; ++f_size, ++i)
-					tx_buff[f_size] = buff.line4[i];
-				tx_buff[f_size++] = '\n';
-
-				// find free cluster
-				uint32_t cluster = 2;
-				for(; cluster < FAT_CACHE_CAPACITY && fat_cache[cluster]; ++cluster);
-
-				fat_create_file(filename, fn_size, ATTR_ARCHIVE, cluster, f_size, rx_buff);
-				fat_write_file(tx_buff, cluster);
-				break;
-			case '\'':
-				for(uint32_t i = 0; i < 128; ++i)
-					printf("%c", line[i]);
-				break;
-			case ',':
-				for(uint32_t i = 0; i < 128; ++i)
-					printf("%c", buff.line1[i]);
-				for(uint32_t i = 0; i < 128; ++i)
-					printf("%c", buff.line2[i]);
-				for(uint32_t i = 0; i < 128; ++i)
-					printf("%c", buff.line3[i]);
-				for(uint32_t i = 0; i < 128; ++i)
-					printf("%c", buff.line4[i]);
-				break;
-			case 'q':
-				printf("leaving minied...\n");
-				break;
-			default:
-				printf("unknown minied cmd...\n");
-				break;
-		}
-	}
 }

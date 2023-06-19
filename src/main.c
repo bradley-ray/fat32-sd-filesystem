@@ -4,6 +4,7 @@
 #include "fat32.h"
 #include "helpers.h"
 #include "init.h"
+#include "shell.h"
 
 
 void device_init(void);
