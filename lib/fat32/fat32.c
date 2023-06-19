@@ -7,16 +7,27 @@
 static uint32_t bpb_SecPerClus;
 static uint32_t FirstDataSector;
 
-
-
 static ldir_entry_t long_dir;
 static sdir_entry_t short_dir;
 static directory_t current_dir;
 static uint32_t fat_cache[FAT_CACHE_CAPACITY];
 
-uint8_t is_long_name(uint8_t attr) {
+static uint8_t is_empty(uint8_t byte) {
+	return (byte == 0) || (byte == 0xe5);
+}
+
+static uint8_t is_long_name(uint8_t attr) {
     return (attr & ATTR_LONG_NAME_MASK) == ATTR_LONG_NAME;
 }
+
+static uint8_t is_dir(uint8_t attr1, uint8_t attr2) {
+	return (attr1 & ATTR_DIRECTORY) || (is_long_name(attr1) && (attr2 & ATTR_DIRECTORY));
+}
+
+static uint8_t is_file(uint8_t attr1, uint8_t attr2) {
+	return (attr1 & ATTR_ARCHIVE) || (is_long_name(attr1) && (attr2 & ATTR_ARCHIVE));
+}
+
 
 void read_dir(directory_t* dir_handle, ldir_entry_t* ldir_handle, sdir_entry_t* sdir_handle, uint8_t* buff, uint32_t idx) {
     for(uint32_t j = 0; j < 32; ++j) {
@@ -201,7 +212,7 @@ void fat_create_file(uint8_t* filename, uint32_t size, uint8_t type, uint32_t cl
 	uint32_t sector = calc_first_sector(current_dir.cluster);
 	sd_read_block(sector, buff);
 	uint32_t idx;
-	for(idx = 0; idx < 512 && buff[idx] != 0 && buff[idx] != 0xe5; idx+= 32);
+	for(idx = 0; idx < 512 && !(is_empty(buff[idx])); idx+= 32);
 	for(uint32_t i = 0; i < 32; ++i)
 		buff[idx+i] = ((uint8_t*)&long_dir)[i];
 	for(uint32_t i = 0; i < 32; ++i) {
@@ -229,11 +240,10 @@ void fat_delete_file(uint8_t* filename, uint32_t name1_size, uint8_t* buff) {
 	sd_read_block(calc_first_sector(current_dir.cluster), buff);
 
 	for (uint32_t i = 0; i < 512; i += (!is_long_name(buff[i+11]) ? 32 : 64)) {
-		if(buff[i] == 0 || buff[i] == 0xe5) {
+		if(is_empty(buff[i])) {
 			continue;
 		}
 
-		// TODO: make is_dir function & is_empty function to clean this stuff up
 		if ((buff[i+11] & ATTR_ARCHIVE) || (is_long_name(buff[i+11]) && (buff[i+32+11] & ATTR_ARCHIVE))) {
 			file_t file;
 			read_file(&file, &long_dir, &short_dir, buff, i);
@@ -266,11 +276,11 @@ void fat_delete_dir(uint8_t* dirname, uint32_t name1_size, uint8_t* buff) {
 	sd_read_block(calc_first_sector(current_dir.cluster), buff);
 
 	for (uint32_t i = 0; i < 512; i += (!is_long_name(buff[i+11]) ? 32 : 64)) {
-		if(buff[i] == 0 || buff[i] == 0xe5) {
+		if(is_empty(buff[i])) {
 			continue;
 		}
 
-		if ((buff[i+11] & ATTR_DIRECTORY) || (is_long_name(buff[i+11]) && (buff[i+32+11] & ATTR_DIRECTORY))) {
+		if (is_dir(buff[i+11], buff[i+11+32])) {
 			directory_t directory;
 			read_dir(&directory, &long_dir, &short_dir, buff, i);
 			uint8_t name2_size = 0;
@@ -279,11 +289,11 @@ void fat_delete_dir(uint8_t* dirname, uint32_t name1_size, uint8_t* buff) {
 				// recursive delete of directory
 				sd_read_block(calc_first_sector(directory.cluster), buff);
 				for (uint32_t k = 0; k < 512; k += (!is_long_name(buff[k+11]) ? 32 : 64)) {
-					if(buff[k] == 0 || buff[k] == 0xe5) {
+					if(is_empty(buff[k])) {
 						continue;
 					}
 
-					if ((buff[k+11] & ATTR_DIRECTORY) || (is_long_name(buff[k+11]) && (buff[k+32+11] & ATTR_DIRECTORY))) {
+					if (is_dir(buff[k+11], buff[k+11+32])) {
 						directory_t directory_in;
 						read_dir(&directory_in, &long_dir, &short_dir, buff, k);
 						uint32_t size = 0;
@@ -296,7 +306,7 @@ void fat_delete_dir(uint8_t* dirname, uint32_t name1_size, uint8_t* buff) {
 						current_dir.cluster = directory.cluster;
 						fat_delete_dir(directory_in.name, size, buff);
 						current_dir.cluster = cluster_backup;
-					} else if ((buff[k+11] & ATTR_ARCHIVE) || (is_long_name(buff[k+11]) && (buff[k+32+11] & ATTR_ARCHIVE))) {
+					} else if (is_file(buff[k+11], buff[k+11+32])) {
 						file_t file;
 						read_file(&file, &long_dir, &short_dir, buff, k);
 						sd_read_block(calc_first_sector(directory.cluster), buff);
@@ -350,15 +360,15 @@ void list_dir(uint8_t* buff) {
 	sd_read_block(sector, buff);
 
 	for (uint32_t i = 0; i < 512; i += (!is_long_name(buff[i+11]) ? 32 : 64)) {
-		if(buff[i] == 0 || buff[i] == 0xe5) {
+		if(is_empty(buff[i])) {
 			continue;
 		}
 
-		if ((buff[i+11] & ATTR_DIRECTORY) || (is_long_name(buff[i+11]) && (buff[i+32+11] & ATTR_DIRECTORY))) {
+		if (is_dir(buff[i+11], buff[i+11+32])) {
 			directory_t directory;
 			read_dir(&directory, &long_dir, &short_dir, buff, i);
 			printf("(dir) %s\n", directory.name);
-		} else if ((buff[i+11] & ATTR_ARCHIVE) || (is_long_name(buff[i+11]) && (buff[i+32+11] & ATTR_ARCHIVE))) {
+		} else if (is_file(buff[i+11], buff[i+11+32])) {
 			file_t file;
 			read_file(&file, &long_dir, &short_dir, buff, i);
 			printf("(file) %s -- %lu B\n", file.name, file.filesize);
@@ -392,12 +402,11 @@ void change_dir(char* dirname, uint8_t* buff) {
 	sd_read_block(sector, buff);
 
 	for (uint32_t i = 0; i < 512; i += (!is_long_name(buff[i+11]) ? 32 : 64)) {
-		if(buff[i] == 0 || buff[i] == 0xe5) {
+		if(is_empty(buff[i])) {
 			continue;
 		}
 
-		// TODO: make is_dir function & is_empty function to clean this stuff up
-		if ((buff[i+11] & ATTR_DIRECTORY) || (is_long_name(buff[i+11]) && (buff[i+32+11] & ATTR_DIRECTORY))) {
+		if (is_dir(buff[i+11], buff[i+11+32])) {
 			directory_t directory;
 			read_dir(&directory, &long_dir, &short_dir, buff, i);
 			uint8_t name2_size = 0;
@@ -425,12 +434,12 @@ void cat_file(char* filename, uint8_t* buff) {
 
 	file_t file;
 	for (uint32_t i = 0; i < 512; i += (!is_long_name(buff[i+11]) ? 32 : 64)) {
-		if(buff[i] == 0 || buff[i] == 0xe5) {
+		if(is_empty(buff[i])) {
 			continue;
 		}
 
 		// TODO: make function is_file()
-		if ((buff[i+11] & ATTR_ARCHIVE) || (is_long_name(buff[i+11]) && (buff[i+32+11] & ATTR_ARCHIVE))) {
+		if (is_file(buff[i+11], buff[i+11+32])) {
 			read_file(&file, &long_dir, &short_dir, buff, i);
 			uint8_t name2_size = 0;
 			for(uint32_t j = 0; j < 16 && file.name[j] != 0; j++, name2_size++);

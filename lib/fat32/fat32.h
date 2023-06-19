@@ -65,8 +65,6 @@ typedef struct {
     uint8_t name[16];
 } file_t;
 
-uint8_t is_long_name(uint8_t attr);
-
 void read_dir(directory_t* dir_handle, ldir_entry_t* ldir_handle, sdir_entry_t* sdir_handle, uint8_t* buff, uint32_t idx);
 void read_file(file_t* file_handle, ldir_entry_t* ldir_handle, sdir_entry_t* sdir_handle, uint8_t* buff, uint32_t idx);
 
